@@ -1,0 +1,198 @@
+% gnuplot.sty
+% Tomas Barton 2012 (barton.tomas@gmail.com)
+% 
+% 
+% Based on graphviz.sty 
+
+% \usepackage[pdftex]{graphicx} 
+% \usepackage{gnuplot}
+
+%% if passing argument to graphicx fails try:
+%% \PassOptionsToPackage{pdftex}{graphicx}
+%% \usepackage{graphicx}
+
+% usage: \begin{gnuplot}[scale=0.5]{graphName}
+%  	    test       
+%        \end{gnuplot}
+% for graphviz syntax see http://www.gnuplot.info/
+
+% !!! make sure you compile your document with `pdflatex -shell-escape doc.tex`
+% "-shell-escape" allows pdflatex to execute code in bash, which is
+% for security reasons forbidden in most LaTeX distributions
+%
+\ProvidesPackage{gnuplot}
+\RequirePackage{pgfkeys}
+\RequirePackage{ifthen}
+\RequirePackage{xstring}
+
+%% this part is taken from filecontents.sty
+\begingroup%
+\catcode`\*=11 %
+\catcode`\^^M\active%
+\catcode`\^^L\active\let^^L\relax%
+\catcode`\^^I\active%
+\gdef\writeT@File#1{%
+  \openin\@inputcheck#1 %
+  \ifeof\@inputcheck%
+    \@latex@warning@no@line%
+        {Writing file `\@currdir#1'}%
+  \else %
+    \@latex@warning@no@line%
+        {Overwriting file `\@currdir#1'}%
+  \fi %
+  \let\do\@makeother\dospecials%
+  \count0=128\relax %
+  \loop %
+    \catcode\count0=11\relax %
+    \advance\count0 by 1\relax %
+    \ifnum\count0<256 %
+  \repeat %
+  \edef\E{\@backslashchar end\string{\@currenvir\string}}%
+  \edef\reserved@b{%
+    \def\noexpand\reserved@b%
+         ####1\E####2\E####3\relax}%
+  \reserved@b{%
+    \ifx\relax##3\relax%
+      \immediate\write\reserved@c{##1}%
+    \else%
+      \edef^^M{\noexpand\end{\@currenvir}}%
+      \ifx\relax##1\relax%
+      \else%
+          \@latex@warning{Writing text `##1' before %
+             \string\end{\@currenvir}\MessageBreak as last line of #1}%
+        \immediate\write\reserved@c{##1}%
+      \fi%
+      \ifx\relax##2\relax%
+      \else%
+         \@latex@warning{%
+           Ignoring text `##2' after \string\end{\@currenvir}}%
+      \fi%
+    \fi%
+    ^^M}%
+  \catcode`\^^L\active%
+  \let\L\@undefined%
+  \def^^L{\@ifundefined L^^J^^J^^J}%
+  \catcode`\^^I\active%
+  \let\I\@undefined%
+  \def^^I{\@ifundefined I\space\space}%
+  \catcode`\^^M\active%
+  \edef^^M##1^^M{%
+    \noexpand\reserved@b##1\E\E\relax}}%
+\endgroup%
+
+
+\def\showHint#1{%
+   Attempted to run gnuplot with:\\
+	  `\texttt{#1}' \\
+    but it doesn't seem not to work. Possible reasons are:
+      \begin{itemize}
+	  \item dot is not in your path (check that command above works in terminal)
+	  \item write18 is not enabled
+	  \item runsystem is disabled (try `pdflatex -shell-escape *.tex`)
+      \end{itemize}
+}
+
+\pgfkeys{
+ /gnuplot/.is family, /gnuplot,
+ scale/.default=1,
+ output/.default=pdf,
+ dir/.default=gnuplot,
+ scale/.estore in = \gnuplotScale,
+ output/.estore in = \gnuplotOutput,
+ dir/.estore in = \gnuplotDir,
+ size/.estore in = \gnuplotSize,
+ force/.estore in = \gnuplotForce,
+}
+\def\runGnupl@t{
+    \def\gnuplotCmd{`which gnuplot`\space \gnuplotFilename\gnupl@tExt \space > \gnuplotFilename.\gnuplotOutput}
+    %after executing macro all spaces are removed, so we need to add one manually
+    \immediate\write18{bash -c "\gnuplotCmd"}
+}
+
+
+\def\renderGnuplot{
+  %file was rendered before
+  \IfFileExists{\gnuplotName.\gnuplotOutput}{
+   %skip rendering for now
+    \ifdefined\gnuplotForce
+      %rendering forced
+      \runGnupl@t
+    \fi
+  }{
+    \runGnupl@t
+    \IfFileExists{\gnuplotFilename.\gnuplotOutput}
+    % the pdf exists: include it 
+    { } 
+    % the pdf was not created - show a hint
+    {   
+      \showHint{\gnuplotCmd}
+    }
+  }
+  \includegraphics[scale=\gnuplotScale]{\gnuplotFilename}
+}
+
+%write output to dot file
+\def\writePltFile#1{% 
+  \immediate\openout\pltfile=\gnuplotFilename\gnupl@tExt
+  \typeout{writing commands to '\gnuplotFilename\gnupl@tExt'}
+  % unexpanded force LaTeX not to evaluate passed string (necessary for allowing backslash in e.g. "\n")
+  \immediate\write\pltfile{set terminal \gnuplotOutput
+set output '\gnuplotFilename.\gnuplotOutput'
+\unexpanded{#1}}
+  \immediate\closeout\pltfile
+}
+
+\newcommand*{\gnuplotDefaultSettings}{
+  \ifdefined\gnuplotOutput\else
+    \def\gnuplotOutput{pdf}
+  \fi
+  \ifdefined\gnuplotScale\else
+    \def\gnuplotScale{1}
+  \fi
+%   \def\termCmd\set\space terminal\space \gnuplotOutput \space font \space"Times-New-Roman,9"
+   \ifdefined\gnuplotSize
+    %we can't use commas in attributes list because it's a separator
+    %StrSubstitute saves replaced string into \gnul@tDim
+    \StrSubstitute{\gnuplotSize}{:}{,}[\gnul@tDim]
+    \def\gnupl@tSize{size \gnul@tDim}
+   \else
+     \def\gnupl@tSize{}
+   \fi
+}
+
+% first argument is the one in []
+% \begin{gnuplot}[first]{name}
+% \end{gnuplot}
+\newenvironment{gnuplot}[2][scale=1,output=pdf]%
+{
+  \ifthenelse{\equal{#2}{}}{
+    \typeout{missing name}
+  }{}
+%parse options
+  \pgfkeys{/gnuplot, #1}%
+  \def\gnuplotName{\unexpanded{#2}}
+  \def\gnupl@tExt{.plt}
+  \ifdefined\gnuplotDir
+    \def\gnuplotFilename{\gnuplotDir/\unexpanded{#2}}
+  \else
+    \def\gnuplotFilename{\unexpanded{#2}}
+  \fi
+  \gnuplotDefaultSettings
+
+  \chardef\reserved@c15 %
+  \ch@ck7\reserved@c\write%
+  \immediate\openout\reserved@c\gnuplotFilename\gnupl@tExt\relax%
+  %preamble
+   \immediate\write\reserved@c{%
+           \expandafter\@gobble\string\set\space terminal\space
+\gnuplotOutput\space font \space"Times-New-Roman,9"\space\gnupl@tSize%
+     }%
+  \writeT@File{\gnuplotFilename\gnupl@tExt}
+%header
+%   \gnuplotProcessDiagram{#1}{#2}
+}{
+ \immediate\closeout\reserved@c
+ %render gnuplot graph from a file
+ \renderGnuplot
+%footer - this block is added after 
+}
