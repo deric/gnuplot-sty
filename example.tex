@@ -1,0 +1,39 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\PassOptionsToPackage{pdftex}{graphicx}
+\usepackage{graphicx}
+\usepackage{gnuplot}
+
+%opening
+\title{}
+\author{}
+
+\def\gnuplotDir{output}
+
+\begin{document}
+
+\begin{gnuplot}[scale=0.8,size=3:4]{filesystems}
+unset xtics
+set ytics
+set x2tics ( "XFS" 0, "JFS" 1, "JFFS" 2, "ext3" 3 )
+set xrange [ -0.5:3.5 ]
+set boxwidth 0.9
+set style fill solid border -1
+set label "Deleting 10,000 files" at graph .05, .95
+plot "-" notitle with boxes fill, \
+     "-" notitle with boxes fill, \
+     "-" notitle with boxes fill, \
+     "-" notitle with boxes fill
+0 22
+e
+1 11
+e
+2 37
+e
+3 25
+e
+\end{gnuplot}
+
+
+
+\end{document}

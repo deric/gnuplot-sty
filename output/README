@@ -1,0 +1,2 @@
+if you create a folder like this and define  \def\gnuplotDir{output} in your LaTeX document,
+all gnuplot files will be here
